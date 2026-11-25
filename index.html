@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulador examen 31MMAN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Inter+Tight:wght@600;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: calm, clinical exam desk; nothing decorative.
+   IDEA: an answer sheet with a bubble grid, like the real test.
+   PICTURE: the live question card and the 20-bubble navigator.
+   COLOUR and TYPE: VIU orange accent on warm white / deep ink; Inter Tight titles, Inter body.
+   LAYOUT: one column for the question, navigator strip above; results as a big score + review list. */
+:root{color-scheme:light dark;--bg:light-dark(#faf8f5,#17130f);--card:light-dark(#ffffff,#221c17);--ink:light-dark(#1d1a17,#f3eee8);--mut:light-dark(#6b6259,#b3a99e);--line:light-dark(#e6dfd6,#3a312a);--acc:#e8541f;--accs:light-dark(#fdeee6,#3b2318);--ok:light-dark(#1d7a4a,#5fcf92);--okb:light-dark(#e5f4ec,#173226);--bad:light-dark(#b3261e,#ff8a80);--badb:light-dark(#fbe9e7,#3a1a17)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip}
+.wrap{max-width:860px;margin:0 auto;padding:clamp(20px,4vw,48px) max(4vw,16px)}
+h1,h2{font-family:"Inter Tight",Inter,sans-serif;line-height:1.08;text-wrap:balance;margin:0 0 .4em}
+h1{font-size:clamp(30px,5vw,46px)}h2{font-size:clamp(22px,3vw,30px)}
+p{margin:.4em 0}.mut{color:var(--mut)}.small{font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:clamp(18px,3vw,28px)}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:20px 0}
+.rule{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.rule b{display:block;font-family:"Inter Tight";font-size:26px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+button,select{font:inherit;font-size:16px;min-height:44px;border-radius:10px;cursor:pointer}
+button{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:0 18px}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+button:focus-visible,select:focus-visible,label.opt:focus-within{outline:3px solid var(--acc);outline-offset:2px}
+select{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:0 12px}
+.top{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.timer{font-variant-numeric:tabular-nums;font-weight:600}
+.nav{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:6px;margin:0 0 18px}
+.nav button{min-height:36px;padding:0;border-radius:50%;aspect-ratio:1;font-size:13px;max-width:44px}
+.nav button.ans{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.nav button.cur{outline:3px solid var(--acc);outline-offset:1px}
+.nav button.flag{border:2px dashed var(--acc)}
+.tag{display:inline-block;font-size:13px;color:var(--acc);font-weight:600;margin-bottom:6px}
+.q{font-size:19px;font-weight:600;margin:0 0 16px}
+label.opt{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:8px 0;cursor:pointer;background:var(--card)}
+label.opt input{margin-top:4px;accent-color:var(--acc);width:18px;height:18px;flex:none}
+label.opt.sel{border-color:var(--acc);background:var(--accs)}
+label.opt.right{border-color:var(--ok);background:var(--okb)}label.opt.wrong{border-color:var(--bad);background:var(--badb)}
+.letter{font-weight:700;width:1.3em;flex:none}
+.fb{margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--accs);font-size:15px}
+.score{display:grid;grid-template-columns:auto minmax(0,1fr);gap:20px;align-items:center}
+.big{font-family:"Inter Tight";font-size:clamp(56px,12vw,96px);line-height:1;font-weight:700;color:var(--acc)}
+.bars .r{display:grid;grid-template-columns:8.5em minmax(0,1fr) 3.5em;gap:10px;align-items:center;margin:6px 0;font-size:14px}
+.bar{height:10px;background:var(--line);border-radius:6px;overflow:hidden}.bar i{display:block;height:100%;background:var(--acc)}
+.rev{border-top:1px solid var(--line);padding:14px 0}.rev .st{font-weight:700;font-size:14px}
+.ok{color:var(--ok)}.ko{color:var(--bad)}
+.hist td,.hist th{padding:6px 10px;text-align:left;border-bottom:1px solid var(--line);font-size:14px}.hist td.n{text-align:right;font-variant-numeric:tabular-nums}
+@media(max-width:600px){.nav{grid-template-columns:repeat(5,minmax(0,1fr))}.score{grid-template-columns:1fr}.q{font-size:17px}}
+@media(prefers-reduced-motion:no-preference){.card.anim{animation:in .25s ease-out}@keyframes in{from{opacity:0;transform:translateY(6px)}}}
+.notice{margin-top:18px;padding:14px 16px;border-radius:12px;border:1px solid var(--line);border-left:4px solid #c8902e;background:color-mix(in srgb,#c8902e 9%,var(--card));font-size:15px}
+.foot{text-align:center;margin-top:28px}.cover h1{font-size:clamp(28px,5vw,40px)}
+</style></head><body><main class="wrap" id="app"></main>
+<script>
+{
+const BANK=[
+// Tema 1
+[1,"Según Gibson (1996), una organización es:",["Una unidad coordinada de al menos dos personas que trabajan para alcanzar objetivos comunes","Un conjunto de factores productivos orientados a maximizar el beneficio","Una entidad jurídica con responsabilidad limitada","Un sistema de departamentos funcionales jerarquizados"],0,"Gibson destaca dos ideas: una estructura deliberada y unos objetivos comunes, con un mínimo de dos personas."],
+[1,"¿Qué elementos comparten todas las organizaciones, con o sin ánimo de lucro?",["Recursos (humanos y materiales), objetivos y una estructura","Capital social, junta general y beneficio","Un CEO, un consejo y accionistas","Producción, comercialización y finanzas"],0,"El manual indica que toda organización tiene recursos, objetivos y estructura; solo las empresas hacen del lucro su razón de ser."],
+[1,"La visión clásica de la empresa (Suárez, 1991) la define como:",["Un conjunto de factores de producción coordinados cuya finalidad tradicional es obtener el máximo beneficio","Una unidad social cuyo fin es satisfacer a todos los stakeholders","Una red de proyectos alineados con la estrategia","Una organización sin estructura formal"],0,"La perspectiva clásica ve a la empresa como unidad de producción que maximiza el beneficio."],
+[1,"La visión de Freeman sobre el fin de la empresa sostiene que:",["Debe satisfacer también al resto de stakeholders, no solo a los propietarios","Su único fin es maximizar el beneficio respetando la ley","Debe evitar cualquier relación con el gobierno","Debe priorizar a los empleados sobre los clientes"],0,"Frente a Friedman (maximizar beneficio dentro de la ley), Freeman propone crear valor para todos los grupos de interés."],
+[1,"¿Qué tipo de sociedad es la única que puede cotizar en bolsa, según el manual?",["La sociedad anónima","La sociedad de responsabilidad limitada","La sociedad comanditaria","La sociedad cooperativa"],0,"La sociedad anónima divide su capital en acciones libremente transmisibles (capital mínimo de 60.000 €) y es la única que puede cotizar."],
+[1,"En una sociedad colectiva, los socios responden de las deudas:",["De forma ilimitada y solidaria, incluso con su patrimonio personal","Solo hasta el capital aportado","Solo los socios comanditarios","Según el número de votos"],0,"En la colectiva los socios aportan capital y trabajo y responden de forma ilimitada y solidaria."],
+[1,"En una sociedad laboral, los trabajadores poseen al menos:",["El 51 % del capital social","El 25 % del capital social","El 100 % del capital social","Un voto por socio, sin importar el capital"],0,"Las sociedades laborales (anónimas o limitadas) exigen que los trabajadores tengan al menos el 51 % del capital."],
+[1,"Según los criterios de la Comisión Europea del manual, una empresa pequeña tiene:",["Menos de 50 trabajadores y un volumen de negocio de hasta 10 M€","Menos de 10 trabajadores y hasta 2 M€","Menos de 250 trabajadores y hasta 50 M€","Más de 250 trabajadores"],0,"Pequeña: <50 trabajadores, ≤10 M€ de volumen de negocio o de balance."],
+[1,"¿Qué subsistema funcional se encarga de las decisiones de producto, precio, promoción y distribución (las 4P)?",["El subsistema comercial","El subsistema de producción","El subsistema de aprovisionamiento","El subsistema de dirección"],0,"El subsistema de comercialización relaciona la producción con el mercado y decide las 4P del marketing mix."],
+[1,"¿Qué subsistema vela por que los demás no persigan sus propios objetivos de forma aislada, sino los de la empresa?",["El subsistema de dirección (administrativo o de management)","El subsistema financiero","El subsistema de recursos humanos","El subsistema de aprovisionamiento"],0,"La dirección planifica y controla los subsistemas para que funcionen coordinados hacia los objetivos de la empresa."],
+[1,"El proceso de monitorizar, comparar y corregir se denomina función de:",["Control","Planificación","Organización","Dirección estratégica"],0,"El manual define el control como monitorizar el desempeño, compararlo con los objetivos y corregir desviaciones."],
+[1,"¿Qué nivel de dirección fija los grandes objetivos y estrategias a largo plazo?",["La alta dirección","La dirección media","La dirección de primera línea","La PMO"],0,"La alta dirección (presidente, CEO, comité ejecutivo) tiene responsabilidad sobre toda la empresa y fija el largo plazo."],
+[1,"La dirección media se caracteriza por:",["Desarrollar las decisiones del nivel superior en su área y ser enlace jerárquico hacia los niveles inferiores","Fijar la misión y la visión de la empresa","Supervisar a diario a los operarios","Representar a los accionistas"],0,"La dirección media fija objetivos a medio y corto plazo y transmite decisiones entre niveles."],
+[1,"Andrews (1965) define la estrategia como:",["El patrón de objetivos, propósitos y políticas que definen en qué negocio está o quiere estar la empresa y qué clase de empresa es o quiere ser","El conjunto de proyectos que ejecuta una empresa en un año","La traza para dirigir un asunto","El análisis de las cinco fuerzas competitivas"],0,"Es la definición clásica de Andrews citada en el manual; 'traza para dirigir un asunto' es la de la RAE."],
+[1,"¿En qué nivel de la estrategia se busca el posicionamiento competitivo de una unidad estratégica de negocio?",["En el nivel de negocio o divisional","En el nivel corporativo","En el nivel funcional","En el nivel operativo de proyecto"],0,"La estrategia de negocio persigue una ventaja competitiva sostenible para cada negocio, bajo las directrices corporativas."],
+[1,"¿Cuál de estas afirmaciones sobre los niveles de estrategia es correcta?",["Las estrategias superiores condicionan a las inferiores","Cada nivel es independiente y no requiere coordinación","La estrategia funcional define la misión de la empresa","El nivel corporativo solo analiza fortalezas internas"],0,"El manual destaca que las estrategias superiores condicionan a las inferiores y que debe haber coherencia entre niveles."],
+[1,"Las tres grandes etapas del proceso de dirección estratégica son:",["Análisis estratégico, formulación e implantación","Planificación, programación y control","Iniciación, ejecución y cierre","Investigación, desarrollo e innovación"],0,"Según Cuervo y Navas y Guerras: análisis estratégico (diagnóstico), formulación de estrategias e implantación."],
+[1,"¿En qué etapa del proceso de dirección estratégica se identifican oportunidades, amenazas, fortalezas y debilidades?",["Análisis estratégico","Formulación estratégica","Implantación","Control"],0,"El análisis estratégico es la fase diagnóstica: análisis externo (O/A) e interno (F/D)."],
+[1,"¿Cuál es el primer paso del proceso básico de control?",["Establecer los estándares de rendimiento","Medir el desempeño","Comparar resultados con estándares","Aplicar medidas correctivas"],0,"El proceso parte de fijar estándares coherentes con los objetivos; luego se mide, se compara y se corrige o refuerza."],
+[1,"Según el manual, las acciones concretas que traducen los planes estratégicos en pasos a realizar son:",["Los proyectos","Las operaciones","Los subsistemas funcionales","Los estándares de rendimiento"],0,"Los planes de acción se traducen en proyectos, con recursos, plazos y un responsable."],
+[1,"¿Por qué el gerente de proyecto no puede gobernar el proyecto que gestiona?",["Porque nadie puede gobernar el proceso de gestión del cual es responsable directo","Porque no tiene formación en gobierno corporativo","Porque el gobierno corresponde siempre al cliente","Porque los proyectos no requieren gobierno"],0,"El manual señala que los proyectos no pueden gobernarse a sí mismos: el PM gestiona y otro órgano gobierna."],
+[1,"Las operaciones se diferencian de los proyectos en que:",["Dan soporte continuo al negocio en el día a día, mientras los proyectos son temporales","Son siempre más costosas","No contribuyen a los objetivos estratégicos","No requieren gestión"],0,"Las operaciones son continuas (producción, contabilidad, mantenimiento); los proyectos son temporales pero también aportan a la estrategia."],
+[1,"¿Cuántos módulos tiene el modelo de negocio de Osterwalder y Pigneur (Canvas)?",["Nueve","Cinco","Seis","Cuatro"],0,"Nueve módulos agrupados en cuatro áreas: clientes, oferta, infraestructura y viabilidad económica."],
+[1,"En la cadena de valor, ¿cuál de estas es una actividad de APOYO?",["Desarrollo de tecnología","Logística interna","Marketing y ventas","Servicio postventa"],0,"De apoyo: aprovisionamiento, desarrollo de tecnología, RR. HH. e infraestructura. Las otras son primarias."],
+// Tema 2
+[2,"Según el manual, la cultura organizacional es:",["Un activo estratégico cuya correcta gestión contribuye al logro de los resultados organizacionales","Un conjunto de normas legales internas","Un tipo de estructura organizativa","Un indicador del entorno económico"],0,"Es la idea con la que abre el capítulo 2."],
+[2,"El entorno se caracteriza por:",["Generar incertidumbre y estar formado por circunstancias ajenas sobre las que la empresa no puede influir","Ser controlado por la alta dirección","Depender de la estructura interna","No afectar a la rentabilidad"],0,"La empresa no puede influir en el entorno, pero sí conocer cómo le afecta y adaptarse a él."],
+[2,"En el análisis PESTEL, la 'E' de Ecológico se refiere principalmente a:",["Las actuaciones de los gobiernos para proteger el medio ambiente, como la política medioambiental","La tasa de crecimiento del PIB","La legislación laboral","El nivel educativo de la población"],0,"El entorno ecológico gira en torno a la política ambiental; la E de Económico usa indicadores como PIB, paro o inflación."],
+[2,"¿Cuál de estos es un indicador del entorno ECONÓMICO según el manual?",["La tasa de paro","La estabilidad del gobierno","La legislación de defensa de la competencia","El nivel de I+D+i"],0,"Indicadores económicos: PIB, paro, inflación, deuda pública, balanza de pagos e inversión."],
+[2,"La defensa de la competencia y la legislación laboral pertenecen al entorno:",["Legal","Político","Sociocultural","Económico"],0,"El entorno legal incluye defensa de la competencia, legislación laboral, seguridad e higiene y seguridad de los productos."],
+[2,"El 'comercio con el exterior' y 'las actuaciones de promoción empresarial' son factores del entorno:",["Político","Legal","Tecnológico","Ecológico"],0,"El manual los lista dentro del entorno político, junto con la política fiscal y la estabilidad del gobierno."],
+[2,"Las estructuras con muchos niveles jerárquicos se denominan:",["Altas","Planas","Matriciales","Divisionales"],0,"Muchos niveles = estructura alta (más complejidad vertical); pocos niveles = plana (más complejidad horizontal)."],
+[2,"Un tramo de control amplio da lugar a:",["Estructuras planas","Estructuras altas","Más niveles jerárquicos","Mayor centralización"],0,"Tramos de control estrechos generan estructuras altas; tramos amplios, estructuras planas."],
+[2,"Una ventaja de las estructuras ALTAS es:",["Mayor control, supervisión y comunicación entre supervisor y subordinados","Menor coste por tener menos directivos","Canales de comunicación más cortos","Mayor autonomía de los subordinados"],0,"Su desventaja es el coste (más niveles directivos) y la mayor longitud de los canales de comunicación."],
+[2,"El principio de 'unidad de mando' (tema de mando) establece que:",["Cada subordinado debe tener un único supervisor","Cada supervisor debe tener un máximo de diez subordinados","Las decisiones se toman por consenso","La autoridad reside en las personas, no en los puestos"],0,"Tener un único supervisor evita conflictos; además, la autoridad reside en los puestos, no en las personas."],
+[2,"¿Cuál de estas es una DESVENTAJA de la descentralización?",["Dificulta establecer una política uniforme","Da más flexibilidad ante cambios del entorno","Libera a la alta dirección de decisiones","Favorece la motivación de los trabajadores"],0,"Las otras tres son ventajas. Las desventajas incluyen problemas de coordinación y pérdida de control de la alta dirección."],
+[2,"La especialización horizontal de los puestos busca principalmente:",["Aumentar la productividad mediante el efecto aprendizaje","Reducir la monotonía","Ampliar el número de tareas del puesto","Eliminar los mandos intermedios"],0,"Lo opuesto, la ampliación horizontal, aumenta las tareas del puesto para reducir la monotonía."],
+[2,"La departamentalización que agrupa a personas con habilidades y conocimientos similares (producción, ventas, finanzas) es:",["Funcional","Geográfica","Por clientes","Por productos"],0,"Es la departamentalización por función."],
+[2,"Según el manual, la estructura funcional es más eficiente cuando la organización:",["Produce pocos productos o líneas estándares y en grandes volúmenes","Opera en muchos mercados geográficos","Desarrolla muchos proyectos transversales","Cambia rápidamente de entorno"],0,"Ofrece economías de escala con pocos productos estándares, en entornos simples y estables."],
+[2,"Una desventaja típica de la estructura funcional es:",["Dificulta la coordinación entre departamentos y ralentiza la decisión por la centralización","Duplica funciones en cada división","Genera conflictos de lealtad entre dos jefes","Aumenta costes al crear más gestores de proyecto"],0,"La duplicación es propia de la divisional y el doble jefe, de la matricial."],
+[2,"La estructura divisional es adecuada sobre todo cuando la empresa:",["Quiere diversificar sus mercados o productos","Tiene un solo producto en un entorno estable","Quiere evitar la autonomía de sus unidades","No tiene sede central"],0,"Agrupa por productos, mercados o áreas con divisiones autónomas; su riesgo es la duplicación de funciones."],
+[2,"Un inconveniente de la estructura divisional es:",["La duplicación de funciones en cada división, que reduce las sinergias","La lentitud de decisión por la centralización","La existencia de dos responsables por tarea","La falta de foco en el producto"],0,"También puede generar competencia y comportamientos oportunistas entre divisiones."],
+[2,"En una estructura matricial:",["Existen dos responsables para cada tarea: el funcional y el del producto o proyecto","Cada empleado tiene un único superior funcional","Las divisiones son totalmente autónomas","No hay gerentes de proyecto"],0,"Combina dos variables de agrupación; su riesgo típico son los conflictos de lealtad sobre los recursos."],
+[2,"En una matriz DÉBIL, el director de proyecto:",["Actúa como coordinador o facilitador, sin poder tomar decisiones por sí mismo","Tiene autoridad plena al mismo nivel que los jefes funcionales","Controla el presupuesto del proyecto","Está dedicado a tiempo completo con equipo propio"],0,"La matriz débil se parece a la organización funcional; la fuerte se parece a la orientada a proyectos."],
+[2,"Según la tabla comparativa del manual, en una estructura FUNCIONAL el presupuesto del proyecto lo controla:",["El gerente funcional","El director del proyecto","La PMO","El cliente"],0,"En la funcional la autoridad del director de proyecto es poca o ninguna; en la orientada a proyectos, el director controla el presupuesto."],
+[2,"En una organización ORIENTADA A PROYECTOS, la autoridad del director de proyecto es:",["Alta o casi total","Poca o ninguna","Baja, moderada o alta según el tipo","Inexistente"],0,"Y su dedicación es completa, con personal administrativo dedicado."],
+[2,"Según el PMI, la gobernabilidad del proyecto es:",["Una función de supervisión alineada con el modelo de gobierno de la organización que abarca el ciclo de vida del proyecto","La gestión diaria de las tareas del equipo","Un sinónimo de PMO","La auditoría financiera del proyecto"],0,"Proporciona al PM estructura, prácticas, estándares, procesos y herramientas para dirigir el proyecto."],
+[2,"Los tres pilares de la gobernabilidad de proyectos son:",["Estructura, personas e información","Alcance, tiempo y coste","Planificación, ejecución y control","Misión, visión y valores"],0,"Estructura (cómo interactúan los interesados), personas (stakeholders y sponsor) e información (datos para decidir)."],
+[2,"Según la Figura 9 del manual, el objetivo principal de un sistema eficaz de gobierno de proyectos es:",["Evitar el fracaso de los proyectos","Reducir el número de proyectos","Eliminar la PMO","Maximizar el número de programas"],0,"Hacer los proyectos adecuados y hacerlos adecuadamente, para evitar su fracaso."],
+[2,"El cuerpo de gobierno de un proyecto debe permanecer:",["Hasta que se comprueben los beneficios de la transición, a menudo meses o años después del cierre","Hasta la firma del acta de constitución","Solo durante la ejecución","Hasta que se entrega el primer entregable"],0,"El trabajo del PM termina al cerrar el proyecto, pero el gobierno sigue hasta verificar los beneficios."],
+[2,"¿Cuál es un principio básico de la gobernabilidad de proyectos?",["Asegurar un punto único de responsabilidad para el éxito del proyecto","Que el patrocinador gestione las tareas diarias","Que el gobierno del proyecto coincida con el gobierno empresarial","Que la responsabilidad dependa de la propiedad del producto"],0,"Los otros principios separan la toma de decisiones del proyecto de la del comité y el gobierno del proyecto del empresarial."],
+[2,"Respecto de la PMO, ¿qué afirmación es correcta?",["Puede existir en cualquier estructura organizativa, incluida la funcional","Solo existe en organizaciones orientadas a proyectos","Sustituye al director de proyecto","Solo da apoyo a nivel de proyecto, nunca de portfolio"],0,"Da apoyo a proyectos, programas y portfolio y actúa como 'traductor' entre lo técnico y lo comercial."],
+// Tema 3
+[3,"Según el PMI, un proyecto es:",["Un esfuerzo temporal que se realiza para crear un producto, servicio o resultado único","Un grupo de programas relacionados","Una operación continua de la empresa","Una colección de trabajos agrupados por objetivos estratégicos"],0,"Tiene principio y fin definidos y contribuye a implementar la estrategia."],
+[3,"Un programa se define como:",["Un grupo de proyectos relacionados gestionados de forma coordinada para obtener beneficios que no se lograrían por separado","Un conjunto de proyectos no relacionados entre sí","Un proyecto de gran tamaño","Una cartera de inversiones financieras"],0,"La clave es la coordinación para obtener beneficios adicionales; lo gestiona el Program Manager."],
+[3,"Los componentes de un portfolio:",["No tienen por qué estar relacionados entre sí, pero contribuyen a los objetivos estratégicos","Deben estar siempre relacionados técnicamente","Son únicamente proyectos","Comparten siempre un mismo cliente"],0,"Esta es la diferencia clave con el programa, cuyos proyectos sí están relacionados."],
+[3,"¿Qué afirmación es correcta?",["Un portfolio se compone de proyectos y programas; un programa, solo de proyectos","Un programa se compone de portfolios","Un proyecto siempre forma parte de un programa","Un portfolio solo contiene programas"],0,"Un proyecto puede o no formar parte de un programa, pero un programa siempre incluye proyectos."],
+[3,"El éxito de un PROGRAMA se mide por:",["El grado en que satisface las necesidades y los beneficios para los que se comprometió","La calidad del producto entregado","El desempeño agregado de los componentes del portfolio","El cumplimiento del cronograma de un proyecto"],0,"Proyecto: calidad y producto. Programa: beneficios comprometidos. Portfolio: desempeño agregado."],
+[3,"¿Qué nivel se centra en seleccionar, priorizar y dotar de recursos a proyectos y programas?",["La gestión de portfolios","La gestión de proyectos","La gestión de operaciones","La gestión de programas"],0,"La gestión de portfolios responde a si una inversión conviene y cómo contribuye a los objetivos estratégicos."],
+[3,"Según PRINCE2, un proyecto es:",["Una organización temporal creada para entregar uno o más productos de negocio según un caso de negocio acordado","Una operación restringida en tiempo y coste con estándares de calidad","Un esfuerzo continuo de mejora","Una colección de programas"],0,"La segunda opción es la definición de IPMA."],
+[3,"¿Qué diferencia principal señala el manual entre un proyecto y un programa?",["El proyecto entrega productos acordados; el programa entrega beneficios al negocio","El proyecto es más largo que el programa","El programa no tiene fin","El proyecto no requiere caso de negocio"],0,"El factor clave de distinción es la complejidad del alcance; los programas entregan beneficios que aportan ventaja competitiva."],
+[3,"¿Cuándo deberían identificarse los beneficios de un programa y sus indicadores?",["Al preparar el caso de negocio o estudio de viabilidad","Al cerrar el programa","Solo cuando aparecen desviaciones","Después de la auditoría final"],0,"Deben definirse antes de iniciar, junto con los procesos de seguimiento y medición."],
+[3,"La curva de obtención de beneficios:",["Empieza y acaba más tarde que el programa","Termina cuando termina el programa","Empieza antes de iniciar el programa","Coincide con el cronograma del proyecto"],0,"Los beneficios se obtienen sobre todo cuando el resultado se integra con las operaciones."],
+[3,"Las cuatro fases de la gestión de programas según el manual son:",["Identificación, estructuración, gestión de portfolio y beneficios, y cierre","Inicio, planificación, ejecución y cierre","Análisis, formulación, implantación y control","Planificación, programación, seguimiento y cierre"],0,"La identificación define los beneficios esperados; el cierre verifica y comunica los beneficios reales."],
+[3,"En los grupos de procesos de gestión de proyectos del manual, ¿qué fase compara lo previsto con lo real, sobre todo presupuesto y coste?",["Análisis y evolución","Programación","Planificación","Seguimiento y control"],0,"Ocurre tras terminar el proyecto; el cierre permite aprender para proyectos futuros."],
+[3,"Dirigir un proyecto implica equilibrar restricciones contrapuestas como:",["Alcance, calidad, tiempo, presupuesto, recursos y riesgo","Misión, visión y valores","Precio, producto, plaza y promoción","Estructura, personas e información"],0,"Además de identificar requisitos y atender a los interesados."],
+[3,"La gestión de programas se preocupa sobre todo por:",["El éxito del programa en su conjunto, más que el de cada proyecto","El éxito individual de cada proyecto","La selección de nuevos portfolios","La gestión de operaciones diarias"],0,"Se centra en las dependencias entre proyectos para aprovechar sinergias y reducir riesgos."],
+[3,"¿Qué certificación del PMI corresponde específicamente a la gestión de programas?",["PgMP","PMP","CAPM","PMI-RMP"],0,"PgMP es Program Management Professional; PMI-RMP es la de riesgos."],
+[3,"Según IPMA, un programa consiste en:",["Un conjunto de proyectos relacionados y los cambios organizativos necesarios para alcanzar un objetivo estratégico","Una estructura flexible temporal para coordinar proyectos","Una colección de proyectos no relacionados","Un proyecto de gran tamaño"],0,"La segunda opción corresponde a la definición de PRINCE2."],
+[3,"Un proyecto que desarrolla un producto o servicio innovador o un prototipo se clasifica, según su contenido, como:",["Producción de productos o servicios","Organizacional","Construcción","Informática"],0,"Suele darse en departamentos de I+D para diseñar y ejecutar prototipos."],
+[3,"Un proyecto financiado con capital público y privado se clasifica como:",["Subvencionado o mixto","Público","Privado","Comunitario"],0,"Según la procedencia del capital: públicos, privados o subvencionados/mixtos."],
+[3,"Según la tipología del PMI, una fusión, una reingeniería de procesos o una reestructuración son proyectos de:",["Transformación de negocio","Instalaciones","Desarrollo de productos y servicios","Investigación y desarrollo"],0,"Tienen lugar dentro de la organización y pueden surgir también por imposiciones legales."],
+[3,"¿Cuál de estos es un beneficio de la gestión de portfolios citado por el manual?",["Priorizar inversiones con base en criterios de selección clave","Eliminar la necesidad de gerentes de proyecto","Garantizar que no haya cambios de alcance","Reducir el número de stakeholders"],0,"También: reducir recursos en proyectos sin valor, aumentar la visibilidad y reducir el ciclo del proyecto."],
+// Tema 4
+[4,"Una innovación empresarial es:",["Una mejora en la actividad empresarial mediante cambios de modelo de negocio, procesos, organización, productos o comercialización","Solo la creación de nuevos productos tecnológicos","Un gasto en I+D sin resultado comercial","La patente de un invento"],0,"Se puede innovar en muchas áreas, no solo en tecnología."],
+[4,"La innovación en el modelo de negocio consiste en:",["Reconfigurar la forma en que la compañía lleva a cabo su actividad, sin necesariamente cambiar productos o servicios","Lanzar un producto nuevo al mercado","Patentar una tecnología","Reducir la plantilla"],0,"Puede unir elementos que operaban por separado, conectarlos de otra forma o introducir mecanismos nuevos."],
+[4,"Los pasos para innovar en el modelo de negocio, según el Tema 4, son:",["Observar, sintetizar, generar, perfeccionar e implementar","Investigar, desarrollar e innovar","Planificar, programar y controlar","Analizar, formular e implantar"],0,"I+D+i es otro concepto del tema; las otras opciones son procesos de dirección o de proyectos."],
+[4,"En I+D+i, el 'Desarrollo' es:",["La aplicación de la investigación para fabricar o poner en servicio nuevos materiales o productos, o mejorarlos","El descubrimiento de nuevos conocimientos","La comercialización del producto patentado","La formación de empleados"],0,"Investigación = nuevos conocimientos; Desarrollo = aplicación; innovación = resultado final que llega al mercado."],
+[4,"Para Schumpeter, el papel del empresario es:",["Detectar y poner en marcha una nueva oportunidad de negocio aprovechando una idea o invención no explotada","Maximizar el beneficio a corto plazo","Administrar los recursos existentes sin cambios","Financiar proyectos de investigación pública"],0,"Es la teoría del empresario innovador."],
+[4,"El riesgo que asume la empresa al no saber cómo aceptarán los consumidores un cambio (como el lanzamiento del iPad) es el riesgo:",["Comercial","Tecnológico","Estratégico","Financiero"],0,"El tecnológico se refiere a adaptar personas y procesos (caso Kodak); el estratégico, a gestionar todos los cambios."],
+[4,"El riesgo de que los trabajadores deban reciclarse y adaptarse a nuevos procesos de producción (caso Kodak) es el riesgo:",["Tecnológico","Comercial","Estratégico","Legal"],0,"Las personas y la cultura de empresa son los principales impulsores de la innovación."],
+[4,"La ventaja competitiva se define como:",["El conjunto de características internas que la empresa desarrolla para obtener y reforzar una posición superior frente a sus competidoras","La capacidad de una empresa de cotizar en bolsa","La cuota de mercado de un sector","El precio más bajo del mercado"],0,"La competitividad es la capacidad de desarrollar esas ventajas competitivas."],
+[4,"En el departamento de producción, una innovación tecnológica suele referirse a:",["Un proceso o máquina con atributos nuevos que lo distinguen de los usados por los competidores","El uso de las TIC para gestionar la información","Un cambio en la estructura organizativa","Una nueva política de precios"],0,"En administración, la innovación tecnológica se refiere sobre todo a las TIC."],
+];
+const TEMAS={1:"Tema 1 · Empresa y estrategia",2:"Tema 2 · Cultura, estructura y gobierno",3:"Tema 3 · Proyectos, programas y portfolios",4:"Tema 4 · Innovación"};
+const SHORT={1:"T1 Empresa",2:"T2 Estructura",3:"T3 3P",4:"T4 Innovación"};
+const PEN=0.33, N=20;
+const app=document.getElementById('app');
+let S=null, tick=null;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const store={get(){try{return JSON.parse(localStorage.getItem('31mman-hist')||'[]')}catch(e){return[]}},add(r){try{const h=this.get();h.unshift(r);localStorage.setItem('31mman-hist',JSON.stringify(h.slice(0,15)))}catch(e){}}};
+function pick(tema){
+  let pool=BANK.map((q,i)=>({q,i})).filter(o=>tema==='all'||o.q[0]==tema);
+  if(tema==='all'){const per={1:6,2:7,3:5,4:2};let out=[];for(const t in per)out=out.concat(shuffle(pool.filter(o=>o.q[0]==t)).slice(0,per[t]));return shuffle(out)}
+  return shuffle(pool).slice(0,Math.min(N,pool.length));
+}
+function start(mode){
+  const tema=document.getElementById('tema').value, mins=+document.getElementById('mins').value;
+  const items=pick(tema).map(o=>{const ord=shuffle([0,1,2,3]);return{id:o.i,t:o.q[0],q:o.q[1],opts:ord.map(k=>o.q[2][k]),correct:ord.indexOf(o.q[3]),ex:o.q[4]}});
+  S={mode,items,ans:items.map(()=>null),flag:items.map(()=>false),checked:items.map(()=>false),cur:0,end:mins?Date.now()+mins*60000:0};
+  if(tick)clearInterval(tick);
+  if(S.end)tick=setInterval(()=>{const el=document.getElementById('timer');if(!el)return;const left=S.end-Date.now();if(left<=0){finish();return}el.textContent=fmt(left)},1000);
+  renderQ();
+}
+const fmt=ms=>{const s=Math.max(0,Math.round(ms/1000));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+function cover(){
+  if(tick)clearInterval(tick);S=null;
+  app.innerHTML=`<div class="card anim cover">
+   <p class="small mut" style="letter-spacing:.08em;text-transform:uppercase">Máster en Project Management · VIU</p>
+   <h1 style="margin-top:6px">Simulador del examen 31MMAN</h1>
+   <p class="mut" style="font-size:18px">Dirección estratégica de proyectos e innovación</p>
+   <div class="rules" style="margin:22px 0"><div class="rule"><b>${BANK.length}</b>preguntas en el banco</div><div class="rule"><b>20</b>por intento</div><div class="rule"><b>4</b>temas</div><div class="rule"><b>−0,33</b>por error</div></div>
+   <p>Preparado por <b>Alex Matías Lira Orellana</b> · Grupo A, octubre 2026-27</p>
+   <div class="notice"><b>Solo material de estudio.</b> Este simulador no es oficial ni está asociado a la Universidad Internacional de Valencia. Las preguntas son de elaboración propia a partir del manual de la asignatura (Collado Martínez, 2022) y de las diapositivas del Tema 4, y pueden contener errores. No reemplaza el material del curso ni anticipa las preguntas del examen real.</div>
+   <div class="row" style="margin-top:20px"><button class="pri" id="bGo">Comenzar</button></div></div>
+  ${foot()}`;
+  document.getElementById('bGo').onclick=home;
+  window.scrollTo(0,0);
+}
+const foot=()=>`<p class="small mut foot">Material de estudio no oficial · Elaborado por Alex Matías Lira Orellana · No asociado a VIU</p>`;
+function home(){
+  if(tick)clearInterval(tick);S=null;
+  const h=store.get();
+  app.innerHTML=`<h1>Simulador del examen 31MMAN</h1>
+  <p class="mut">Dirección estratégica de proyectos e innovación. ${BANK.length} preguntas basadas en el manual (Collado Martínez, 2022) y en las diapositivas del Tema 4. Cada intento sortea 20.</p>
+  <div class="rules"><div class="rule"><b>20</b>preguntas de alternativas</div><div class="rule"><b>+1</b>por acierto</div><div class="rule"><b>−0,33</b>por error</div><div class="rule"><b>0</b>en blanco</div></div>
+  <div class="card"><div class="row" style="margin-bottom:14px">
+   <label class="small">Temas&nbsp;<select id="tema"><option value="all">Todos (como el examen)</option>${Object.entries(TEMAS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></label>
+   <label class="small">Tiempo&nbsp;<select id="mins"><option value="30">30 min</option><option value="45">45 min</option><option value="0">Sin límite</option></select></label></div>
+   <div class="row"><button class="pri" id="bExam">Modo examen</button><button id="bPrac">Modo práctica</button></div>
+   <p class="small mut" style="margin-top:12px"><b>Examen:</b> ves el resultado al final, como en el campus. <b>Práctica:</b> corriges cada pregunta al responderla y ves la explicación.</p></div>
+  <div class="card" style="margin-top:16px"><h2>Cuándo responder</h2>
+   <p>Con −0,33 por error y 4 alternativas, adivinar al azar tiene un valor esperado de 0. Si descartas 1 alternativa, responder suma en promedio +0,11; si descartas 2, +0,33. <b>Responde si puedes descartar al menos una; si no, déjala en blanco.</b></p></div>
+  ${h.length?`<div class="card" style="margin-top:16px"><h2>Tus intentos</h2><div class="scroll"><table class="hist"><tr><th>Fecha</th><th>Modo</th><th>Temas</th><th class="n">Nota /10</th></tr>${h.map(r=>`<tr><td>${esc(r.d)}</td><td>${esc(r.m)}</td><td>${esc(r.t)}</td><td class="n">${r.n.toFixed(2)}</td></tr>`).join('')}</table></div></div>`:''}`;
+  app.insertAdjacentHTML('beforeend',`<p class="small" style="margin-top:16px"><a href="#" id="bCover">← Portada</a></p>`+foot());document.getElementById('bCover').onclick=e=>{e.preventDefault();cover()};
+  document.getElementById('bExam').onclick=()=>start('exam');
+  document.getElementById('bPrac').onclick=()=>start('prac');
+}
+function renderQ(){
+  const it=S.items[S.cur], i=S.cur, chk=S.checked[i];
+  const answered=S.ans.filter(a=>a!==null).length;
+  app.innerHTML=`<div class="top"><span class="small mut">${S.mode==='exam'?'Modo examen':'Modo práctica'} · ${answered}/${S.items.length} respondidas</span>
+   <span class="row">${S.end?`<span class="timer" id="timer">${fmt(S.end-Date.now())}</span>`:''}<button id="bEnd">Terminar</button></span></div>
+  <div class="nav">${S.items.map((x,k)=>`<button data-k="${k}" class="${S.ans[k]!==null?'ans':''} ${k===i?'cur':''} ${S.flag[k]?'flag':''}" aria-label="Pregunta ${k+1}">${k+1}</button>`).join('')}</div>
+  <div class="card anim"><span class="tag">Pregunta ${i+1} · ${SHORT[it.t]}</span><p class="q">${esc(it.q)}</p>
+   ${it.opts.map((o,k)=>{let c=S.ans[i]===k?'sel':'';if(chk){if(k===it.correct)c='right';else if(S.ans[i]===k)c='wrong'}
+     return `<label class="opt ${c}"><input type="radio" name="o" value="${k}" ${S.ans[i]===k?'checked':''} ${chk?'disabled':''}><span class="letter">${'abcd'[k]})</span><span>${esc(o)}</span></label>`}).join('')}
+   ${chk?`<div class="fb"><b class="${S.ans[i]===it.correct?'ok':S.ans[i]===null?'':'ko'}">${S.ans[i]===it.correct?'Correcta.':S.ans[i]===null?'En blanco.':'Incorrecta.'}</b> ${esc(it.ex)}</div>`:''}
+   <div class="row" style="margin-top:16px">
+    <button id="bPrev" ${i===0?'disabled':''}>Anterior</button>
+    ${chk?'':`<button id="bClear">Dejar en blanco</button>`}
+    ${S.mode==='prac'&&!chk?`<button class="pri" id="bCheck">Corregir</button>`:''}
+    <button id="bFlag">${S.flag[i]?'Quitar marca':'Marcar para revisar'}</button>
+    <button class="${S.mode==='exam'||chk?'pri':''}" id="bNext">${i===S.items.length-1?'Ver resultado':'Siguiente'}</button></div></div>`;
+  app.querySelectorAll('input[name=o]').forEach(r=>r.onchange=()=>{S.ans[i]=+r.value;renderQ()});
+  app.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{S.cur=+b.dataset.k;renderQ()});
+  const on=(id,f)=>{const e=document.getElementById(id);if(e)e.onclick=f};
+  on('bPrev',()=>{S.cur--;renderQ()});
+  on('bNext',()=>{if(i===S.items.length-1)confirmEnd();else{S.cur++;renderQ()}});
+  on('bClear',()=>{S.ans[i]=null;renderQ()});
+  on('bFlag',()=>{S.flag[i]=!S.flag[i];renderQ()});
+  on('bCheck',()=>{S.checked[i]=true;renderQ()});
+  on('bEnd',confirmEnd);
+}
+function confirmEnd(){
+  if(document.getElementById('conf'))return;
+  const blank=S.ans.filter(a=>a===null).length;
+  app.insertAdjacentHTML('beforeend',`<div class="card" id="conf" style="margin-top:16px"><p><b>¿Terminar el intento?</b> ${blank?`Tienes ${blank} en blanco.`:'Respondiste todas.'}</p><div class="row"><button class="pri" id="cYes">Ver resultado</button><button id="cNo">Seguir</button></div></div>`);
+  document.getElementById('cYes').onclick=finish;
+  document.getElementById('cNo').onclick=()=>document.getElementById('conf').remove();
+  document.getElementById('conf').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function finish(){
+  if(tick)clearInterval(tick);
+  let c=0,w=0,b=0;const by={};
+  S.items.forEach((it,k)=>{const r=S.ans[k];by[it.t]=by[it.t]||{c:0,n:0};by[it.t].n++;if(r===null)b++;else if(r===it.correct){c++;by[it.t].c++}else w++});
+  const rawU=c-PEN*w, raw=Math.max(0,rawU), nota=raw/S.items.length*10;
+  const temaSel=[...new Set(S.items.map(x=>x.t))].length>1?'Todos':SHORT[S.items[0].t];
+  store.add({d:new Date().toLocaleString('es',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}),m:S.mode==='exam'?'Examen':'Práctica',t:temaSel,n:nota});
+  const weak=Object.entries(by).filter(([t,v])=>v.c/v.n<0.6).map(([t])=>SHORT[t]);
+  app.innerHTML=`<h1>Resultado</h1>
+  <div class="card score"><div class="big">${nota.toFixed(2).replace('.',',')}</div><div>
+   <p><b>${c}</b> correctas · <b>${w}</b> incorrectas · <b>${b}</b> en blanco</p>
+   <p class="mut small">Puntos: ${c} − ${PEN.toString().replace('.',',')} × ${w} = ${rawU.toFixed(2).replace('.',',')} de ${S.items.length}${rawU<0?' (la nota no baja de 0)':''}. Nota sobre 10.</p>
+   ${weak.length?`<p class="small">Para repasar: <b>${weak.join(', ')}</b>.</p>`:`<p class="small ok">Sin temas por debajo del 60 %.</p>`}</div></div>
+  <div class="card" style="margin-top:16px"><h2>Aciertos por tema</h2><div class="bars">${Object.entries(by).map(([t,v])=>`<div class="r"><span>${SHORT[t]}</span><span class="bar"><i style="width:${Math.round(v.c/v.n*100)}%"></i></span><span>${v.c}/${v.n}</span></div>`).join('')}</div></div>
+  <div class="row" style="margin:16px 0"><button class="pri" id="bAgain">Nuevo intento</button><button id="bHome">Inicio</button></div>
+  <div class="card"><h2>Revisión</h2>${S.items.map((it,k)=>{const r=S.ans[k];const st=r===null?'<span class="st mut">En blanco</span>':r===it.correct?'<span class="st ok">Correcta</span>':'<span class="st ko">Incorrecta</span>';
+   return `<div class="rev">${st} <span class="small mut">· ${SHORT[it.t]}</span><p><b>${k+1}. ${esc(it.q)}</b></p>
+   ${r!==null&&r!==it.correct?`<p class="small ko">Tu respuesta: ${esc(it.opts[r])}</p>`:''}<p class="small ok">Correcta: ${esc(it.opts[it.correct])}</p><p class="small mut">${esc(it.ex)}</p></div>`}).join('')}</div>`;
+  document.getElementById('bAgain').onclick=home;document.getElementById('bHome').onclick=home;
+  window.scrollTo(0,0);
+}
+cover();
+}
+</script></body></html>
